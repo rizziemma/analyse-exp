@@ -27,14 +27,28 @@ ggplot(data=datasLength, aes(x=factor(Length), y=x, fill=Status))
 
 ##Analyse categories
 #succès par catégorie
-success <- ddply(file, .(main_category), summarize, rate=sum(status=="successful")*100/length(status))
+plot_success = function(data){
+  data <- ddply(data, .(main_category), summarize, rate=sum(status=="successful")*100/length(status))
+  #success <- success[order(-success$rate),]
+  ggplot(data = data, aes(x=main_category, y=rate, fill=main_category)) + 
+    geom_bar(stat="identity", position=position_dodge())
+}
 
-ggplot(data = success, aes(x=main_category, y=rate)) + 
-  geom_bar(stat="identity", position=position_dodge())
 
-#TODO
-#trier + couleurs
+plot_success(file)
 
+plot_success(file[file$country=="GB",])
+plot_success(file[file$country=="US",])
+plot_success(file[file$country=="CA",])
+plot_success(file[file$country=="DE",])
+plot_success(file[file$country=="AU",])
+
+data <- ddply(file, .(main_category, country), summarize, rate=sum(status=="successful")*100/length(status))
+data
+
+ggplot(data = data, aes(x=main_category, y=rate, fill=country)) + 
+  geom_bar(position="identity", stat = "identity")
+#trier
 
 #projets par pays -> DONUT
 data <- aggregate(file$id, by=list(Country=file$country), FUN=length)
@@ -53,3 +67,12 @@ ggplot(country, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Country)) +
 
 #succés par catégorie pour chaque pays 
 
+
+
+
+ggplot(dat2, aes(x = variable, y = value, fill = row)) + 
+  geom_bar(stat = "identity") +
+  xlab("\nType") +
+  ylab("Time\n") +
+  guides(fill = FALSE) +
+  theme_bw()
