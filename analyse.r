@@ -16,9 +16,47 @@ str(file)
 file
 datasLength <- aggregate(file$name_length, by=list(Length=file$name_length, Status=file$status), FUN=length)
 datasLength
-ggplot(data=datasLength, aes(x=factor(Length), y=x, fill=Status)) 
-+ geom_bar(stat="identity", position=position_dodge())
+ggplot(data=datasLength, aes(x=factor(Length), y=x, fill=Status)) + geom_bar(stat="identity", position=position_dodge())
 
+### nombre de mots moyen pour le succès
+dataSuccess <- file[file$status=="successful",]
+averageLength <- mean(dataSuccess$name_length)
+averageLength
+
+### % succès ou échec par nombre de mots
+
+# % success
+my_plot_s = function(data){
+  data <- ddply(data, .(name_length), summarize, rate=sum(status=="successful")*100/length(status))
+  ggplot(data = data, aes(x=name_length, y=rate, fill=name_length)) + 
+    geom_bar(stat="identity", position=position_dodge())
+}
+my_plot_s(file)
+# % failed
+my_plot_f = function(data){
+  data <- ddply(data, .(name_length), summarize, rate=sum(status=="failed")*100/length(status))
+  ggplot(data = data, aes(x=name_length, y=rate, fill=name_length)) + 
+    geom_bar(stat="identity", position=position_dodge())
+}
+my_plot_f(file)
+##PLOT RADAR -- perc success en fonction du nombre de mot
+install.packages('fmsb')
+install.packages('dplyr')
+library(dplyr)
+library(fmsb)
+max_min <- data.frame (
+  max = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+  min = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+)
+
+dataRadar <- ddply(file, .(name_length), summarize, rate=sum(status=="successful")*100/length(status))
+dataRadar$max <- max
+dataRadar$min <-min
+df2 <- data.frame(t(dataRadar[-1])) # inversion des colonnes/lignes
+colnames(df2) <- dataRadar[, 1]     # inversion des colonnes/lignes
+sum(df2)
+df2 %>% slice(match(c("max", "min", "rate"), 1))
+radarData <- radarchart(df2[c("max", "min", "rate"),], axistype=1, caxislabels=c(0,25,50,75,100))
 
 # selon la longueur
 
