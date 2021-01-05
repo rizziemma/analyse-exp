@@ -1,116 +1,59 @@
 install.packages('ggplot2')
-library(ggplot2)
 install.packages('plyr')
+install.packages('dplyr')
+install.packages('hrbrthemes')
+library(ggplot2)
 library(plyr)
+library(dplyr)
+library(hrbrthemes)
 setwd("Documents/analyse-exp/analyse-exp")
 file <- read.csv("Kickstarter_data.csv", encoding="UTF-8")
 str(file)
 summary(file)
 
-##Analyse du titre
+######## Analyse du titre ########
 
-# Selon le nombre de mots
+##Pourcentage de succés selon le nombre de mots dans le titre
 
-###### tous types de status ######
-str(file)
-file
-datasLength <- aggregate(file$name_length, by=list(Length=file$name_length, Status=file$status), FUN=length)
-datasLength
-ggplot(data=datasLength, aes(x=factor(Length), y=x, fill=Status)) + geom_bar(stat="identity", position=position_dodge())
-
-### nombre de mots moyen pour le succès
-dataSuccess <- file[file$status=="successful",]
-averageLength <- mean(dataSuccess$name_length)
-averageLength
-
-### % succès ou échec par nombre de mots
-
-# % success
-my_plot_s = function(data){
-  data <- ddply(data, .(name_length), summarize, rate=sum(status=="successful")*100/length(status))
-  ggplot(data = data, aes(x=name_length, y=rate, fill=name_length)) + 
-    geom_bar(stat="identity", position=position_dodge())
-}
-my_plot_s(file)
-# % failed
-my_plot_f = function(data){
-  data <- ddply(data, .(name_length), summarize, rate=sum(status=="failed")*100/length(status))
-  ggplot(data = data, aes(x=name_length, y=rate, fill=name_length)) + 
-    geom_bar(stat="identity", position=position_dodge())
-}
-my_plot_f(file)
-##PLOT RADAR -- perc success en fonction du nombre de mot
-install.packages('fmsb')
-install.packages('dplyr')
-library(dplyr)
-library(fmsb)
-max_min <- data.frame (
-  max = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
-  min = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-)
-
+#calcul du pourcentage de succès par nombre de mots dans le titre
 dataRadar <- ddply(file, .(name_length), summarize, rate=sum(status=="successful")*100/length(status))
-dataRadar$max <- max
-dataRadar$min <-min
+#ajout des colonnes pour les valeur min et max (0% à 100%)
+dataRadar$max <- rep(100, 20)
+dataRadar$min <-rep(0, 20)
 df2 <- data.frame(t(dataRadar[-1])) # inversion des colonnes/lignes
 colnames(df2) <- dataRadar[, 1]     # inversion des colonnes/lignes
-sum(df2)
-df2 %>% slice(match(c("max", "min", "rate"), 1))
-radarData <- radarchart(df2[c("max", "min", "rate"),], axistype=1, caxislabels=c(0,25,50,75,100))
+#plot spider
+radarData <- radarchart(df2[c("max", "min", "rate"),], axistype=1, caxislabels=c(0,25,50,75,100), pfcol=rgb(0.2,0.6,0.2, 0.5), title="Pourcentage de succés selon le nombre de mots dans le titre")
 
-# selon la longueur
+##Nombre de projets selon le nombre de mots dans le titre
 
+#calcul du nombre de projet par nombre de mots dans le titre
+datasOccurence <- aggregate(file$name_length, by=list(Length=file$name_length), FUN=length)
+#ajout des colonnes pour les valeur min et max (0 à 25000 projets)
+datasOccurence$max <- rep(25000, 20)
+datasOccurence$min <- rep(0, 20)
+dfOc <- data.frame(t(datasOccurence[-1])) # inversion des colonnes/lignes
+colnames(dfOc) <- datasOccurence[, 1]     # inversion des colonnes/lignes
+#plot spider
+radarData <- radarchart(dfOc[c("max", "min", "x"),], axistype=1, caxislabels=c(0,5000, 10000,15000, 20000,25000), pfcol=rgb(0.5,0.3,0.8,0.5),  title="Nombre de projets selon le nombre de mots dans le titre")
 
-# s'ils sont en majuscules
+######## Analyse de la durée / succés ########
 
-##Analyse categories
-#succÃ¨s par catÃ©gorie
-plot_success = function(data){
-  data <- ddply(data, .(main_category), summarize, rate=sum(status=="successful")*100/length(status))
-  #success <- success[order(-success$rate),]
-  ggplot(data = data, aes(x=main_category, y=rate, fill=main_category)) + 
-    geom_bar(stat="identity", position=position_dodge())
-}
+## Pourcentage de succés selon la durée du projet
 
+#recuperation des projets de moins de 60jours
+file2 <-file[file$duration<=60,]
+# découpage par paliers de 5 jours
+file2$palier <- cut(as.numeric(file2$duration), breaks=c(5*(0:12), Inf), right=FALSE, labels=c(5*(0:12)))
+# calcul du nombre de projets et du pourcentage de succès (par palier)
+paliers <- ddply(file2, .(palier), summarize, success_rate=sum(status=="successful")*100/length(status), occur=length(palier))
+#plot
+ggplot(data = paliers, aes(x=paliers$palier, y=success_rate, size=paliers$occur, color=paliers$occur, group=1)) +
+  geom_line(size=1, color="grey") +
+  geom_point(alpha=0.8) + 
+  scale_size(range = c(.1, 30)) +
+  ggtitle("Pourcentage de succés selon la durée du projet") +
+  guides(colour = guide_legend(override.aes = list(size=7), title="Nombre de projets"), size="none") + 
+  labs(x="Durée en jour", y="Pourcentage de réussite") +
+  theme_ipsum()
 
-plot_success(file)
-
-plot_success(file[file$country=="GB",])
-plot_success(file[file$country=="US",])
-plot_success(file[file$country=="CA",])
-plot_success(file[file$country=="DE",])
-plot_success(file[file$country=="AU",])
-
-data <- ddply(file, .(main_category, country), summarize, rate=sum(status=="successful")*100/length(status))
-data
-
-ggplot(data = data, aes(x=main_category, y=rate, fill=country)) + 
-  geom_bar(position="identity", stat = "identity")
-#trier
-
-#projets par pays -> DONUT
-data <- aggregate(file$id, by=list(Country=file$country), FUN=length)
-data <- data[order(- data$x),]
-country <- data[1:5,] 
-levels(country$Country) <- c(levels(country$Country), "Others")
-country[6,] <- c("Others", sum(data[-(1:5),]$x))
-country$x <- as.numeric(country$x)
-country$fraction = country$x / sum(country$x)
-country$ymax = cumsum(country$fraction)
-country$ymin = c(0, head(country$ymax, n=-1))
-ggplot(country, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Country)) +
-  geom_rect() +
-  coord_polar(theta="y") +
-  xlim(c(2,4))
-
-#succÃ©s par catÃ©gorie pour chaque pays 
-
-
-
-
-ggplot(dat2, aes(x = variable, y = value, fill = row)) + 
-  geom_bar(stat = "identity") +
-  xlab("\nType") +
-  ylab("Time\n") +
-  guides(fill = FALSE) +
-  theme_bw()
